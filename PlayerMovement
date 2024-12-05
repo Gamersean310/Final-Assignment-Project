@@ -1,0 +1,119 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class PlayerMovement : MonoBehaviour
+{
+	private float defaultSpeed = 1f;
+    public float turnSpeed = 20f;
+	public float m_speed = 1f;
+	private float sprintTimer;
+	public float cooldown = 5f;
+	public float duration =6f;
+	public int boostSpeed;
+	private float boostPercent;
+	public bool isScared;
+	public int escape = 0;
+	
+
+    Animator m_Animator;
+    Rigidbody m_Rigidbody;
+    AudioSource m_AudioSource;
+    Vector3 m_Movement;
+    Quaternion m_Rotation = Quaternion.identity;
+
+    void Start ()
+    {
+		
+        m_Animator = GetComponent<Animator> ();
+        m_Rigidbody = GetComponent<Rigidbody> ();
+        m_AudioSource = GetComponent<AudioSource> ();
+		boostPercent = (100 + boostSpeed)/100;
+		isScared= false;
+		
+		InvokeRepeating("Scared", 5f,30f);
+    }
+
+    void FixedUpdate ()
+    {
+        float horizontal = Input.GetAxis ("Horizontal");
+        float vertical = Input.GetAxis ("Vertical");
+        
+        m_Movement.Set(horizontal, 0f, vertical);
+        m_Movement.Normalize ();
+
+        bool hasHorizontalInput = !Mathf.Approximately (horizontal, 0f);
+        bool hasVerticalInput = !Mathf.Approximately (vertical, 0f);
+        bool isWalking = hasHorizontalInput || hasVerticalInput;
+        m_Animator.SetBool ("IsWalking", isWalking);
+        
+        if (isWalking)
+        {
+            if (!m_AudioSource.isPlaying)
+            {
+                m_AudioSource.Play();
+            }
+        }
+        else
+        {
+            m_AudioSource.Stop ();
+        }
+
+		if(Time.time >= sprintTimer && Input.GetKeyDown(KeyCode.LeftShift))
+		{
+			Sprinting(boostPercent);
+			sprintTimer = Time.time + cooldown;
+		}
+
+
+		if(isScared== true)
+		{
+
+			if (escape == 3){
+			
+			m_speed = defaultSpeed;
+			isScared = false;
+			escape = 0;
+			}
+			
+		else {
+			
+			if(Input.GetKeyDown(KeyCode.Space))
+				escape++;
+		
+		}
+		}
+
+        Vector3 desiredForward = Vector3.RotateTowards (transform.forward, m_Movement, turnSpeed * Time.deltaTime, 0f);
+        m_Rotation = Quaternion.LookRotation (desiredForward);
+		
+    }
+
+    void OnAnimatorMove ()
+    {
+        m_Rigidbody.MovePosition (m_Rigidbody.position + m_Movement * m_Animator.deltaPosition.magnitude * m_speed);
+        m_Rigidbody.MoveRotation (m_Rotation);
+    }
+
+	
+
+	void Sprinting(float boost)
+	{
+		m_speed = m_speed * boost;
+		
+		Invoke("ResetSpeed", duration);
+	}
+
+
+	void ResetSpeed()
+	{
+		m_speed = m_speed / boostPercent;
+	}
+	
+	void Scared()
+	{
+		isScared = true;
+		m_speed = 0;
+		}
+	}
